@@ -33,35 +33,42 @@ def join_bands(bands, headliners):
 
 def edit_data(df, edit_type, input_values):
     try:
-        input_values["Band"].strip.split(",")
+        new_entries = input_values["Band"].strip().split(",")
     except:
-        input_values["Collectable"].strip.split(",")
+        new_entries = input_values["Collectable"].strip().split(",")
         
-
-    df.Date = pd.to_datetime(df.Date)
+    df.Date = pd.to_datetime(df.Date, format="%d-%m-%Y", errors='coerce')
+    edited_df = df.copy()
+    
     if edit_type == "Add":
-        # Add colelctable to dataframe
-        new_row = pd.DataFrame({
-            k: [dt.datetime.strptime(v, "%d-%m-%Y")] if k == "Date" else [v]
-            for k, v in input_values.items()})
-        
-        edited_df = pd.concat([df, new_row], ignore_index=True)
-        edited_df = edited_df.reset_index(drop=True)
+        # Add to dataframe
+        for i, entry in enumerate(new_entries):
+            input_values["Band"] = entry.strip()
+            if i == 0:
+                input_values["Headliner"] = 1
+            else:
+                input_values["Headliner"] = 0
+            
+            new_row = pd.DataFrame({
+                k: [dt.datetime.strptime(v, "%d-%m-%Y")] if k == "Date" else [v]
+                for k, v in input_values.items()})
+            
+            edited_df = pd.concat([edited_df, new_row], ignore_index=True)
+            edited_df = edited_df.reset_index(drop=True)
         return edited_df
     
     else:
-        # Delete collectable
+        # Delete from dataframe
         input_values["Date"] = dt.datetime.strptime(input_values["Date"], "%d-%m-%Y")
         
-        if "BelongsTo" in df.columns:
-            edited_df = df.loc[~(
-                (df["Collectable"] == input_values["Collectable"]) &
-                (df["BelongsTo"] == input_values["BelongsTo"]) &
-                (df["Date"] == input_values["Date"]))]
+        if "BelongsTo" in edited_df.columns:
+            edited_df = edited_df.loc[~(
+                (edited_df["Collectable"] == input_values["Collectable"]) &
+                (edited_df["BelongsTo"] == input_values["BelongsTo"]) &
+                (edited_df["Date"] == input_values["Date"]))]
         else:
             edited_df = df.loc[~(
-                (df["Band"] == input_values["Band"]) &
-                (df["Date"] == input_values["Date"]))]
+                (edited_df["Band"] == input_values["Band"]) &
+                (edited_df["Date"] == input_values["Date"]))]
 
-        st.write(edited_df)
         return edited_df  

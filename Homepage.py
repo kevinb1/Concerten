@@ -171,15 +171,11 @@ else:
                       "BelongsTo": delete_belongsto,
                       "Date": delete_date}
 
-if st.button(f"Aplly Changes", type="primary"):
+if st.button(f"Aply Changes", type="primary"):
     if selected_table == "Visited Concerts":
-
         df_concerts_edited = edit_data(df_concerts_selected, edit_type, edit_input)
         df_concerts_edited.to_excel("Concerts.xlsx", index=False)
-
-        
     else:
-
         df_collectables_edited = edit_data(df_collectables_selected, edit_type, edit_input)
         df_collectables_edited.to_excel("Collectables.xlsx", index=False)
         

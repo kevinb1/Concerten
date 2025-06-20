@@ -135,54 +135,95 @@ with st.container():
 # Bar chart for frequency
 st.header("Frequency Bar Chart")
 st.markdown("""---""")
-st.subheader("Options If No Filters Are Active")
+st.subheader("Chart Options")
 
-col1, col2 = st.columns(2)
+# Filter on chart options
+col1, col2 , col3 = st.columns(3)
 with col1:
     display_n = st.number_input("Show Amount", min_value=1, max_value=len(df_concerts['Band'].unique()), value =20)
 
 with col2:
     sort = st.radio("Choose to Display Top or Bottom", ["Top", "Bottom"])
-st.markdown("""---""")
 
+with col3:
+    seen_type = st.radio("Select Type", ["All", "Headliners", "Support"])
+    
+# Make copy
+freq_table_Band_filtered =  freq_table_Band_sorted.copy()
 
-
-if len(query_parts) > 0:
-    chart = alt.Chart(freq_table_Band_sorted).mark_bar().encode(
-        y=alt.Y('Band', sort=None),  # Disable automatic sorting to maintain original order
-        x='count',
-        color=alt.Color('Headliner:N',
-                    scale=alt.Scale(domain=[0, 1],
-                                    range=['orange', 'steelblue']),
-                    legend=alt.Legend(title='Headliner')),
-        tooltip=['Band', 'count', 'Headliner'])
+# Selectt seen_type
+if seen_type == "Headliners":
+    freq_table_Band_filtered = freq_table_Band_filtered.loc[freq_table_Band_filtered["Headliner"] == 1]
+    freq_table_Band_filtered = freq_table_Band_filtered.sort_values(["count", "Band"], ascending=False)
+elif seen_type == "Support":
+    freq_table_Band_filtered = freq_table_Band_filtered.loc[freq_table_Band_filtered["Headliner"] == 0]
+    freq_table_Band_filtered = freq_table_Band_filtered.sort_values(["count", "Band"], ascending=False)
 else:
-    if sort == "Top":
-        chart = alt.Chart(freq_table_Band_sorted.head(display_n)).mark_bar().encode(
-            y=alt.Y('Band', sort=None),  # Disable automatic sorting to maintain original order
-            x='count',
-            color=alt.Color('Headliner:N',
-                        scale=alt.Scale(domain=[0, 1],
-                                        range=['orange', 'steelblue']),
-                        legend=alt.Legend(title='Headliner')),
-            tooltip=['Band', 'count', 'Headliner'])
-    if sort == "Bottom":
-        chart = alt.Chart(freq_table_Band_sorted.tail(display_n)).mark_bar().encode(
-            y=alt.Y('Band', sort=None),  # Disable automatic sorting to maintain original order
-            x='count',
-            color=alt.Color('Headliner:N',
-                        scale=alt.Scale(domain=[0, 1],
-                                        range=['orange', 'steelblue']),
-                        legend=alt.Legend(title='Headliner')),
-            tooltip=['Band', 'count', 'Headliner'])
+    freq_table_Band_filtered = freq_table_Band_filtered.sort_values(["count_total", "Band"], ascending=False)
 
-# Rotate the chart to horizontal orientation
-chart = chart.properties(
-    width=alt.Step(40),  # Adjust width as needed
-    height=alt.Step(20)  # Adjust height as needed
-).configure_axisX(
-    labelAngle=0
+# Get desired top/bottom n
+if sort == "Top":
+    freq_table_Band_filtered = freq_table_Band_filtered.head(display_n).reset_index(drop=True)
+else:
+    freq_table_Band_filtered = freq_table_Band_filtered.tail(display_n).reset_index(drop=True)
+
+# Crate bar for headliners
+barchart = go.Figure()
+barchart.add_trace(go.Bar(
+    x=freq_table_Band_filtered.loc[freq_table_Band_filtered["Headliner"] == 1]['count'],
+    y=freq_table_Band_filtered.loc[freq_table_Band_filtered["Headliner"] == 1]['Band'],
+    orientation='h',
+    text=freq_table_Band_filtered.loc[freq_table_Band_filtered["Headliner"] == 1]['count'],
+    textposition=('inside'),
+    textangle=0,
+    textfont=dict(size=20),
+    name='Headliner',
+    marker=dict(color='blue'),
+))
+
+# Create bar for support
+barchart.add_trace(go.Bar(
+    x=freq_table_Band_filtered.loc[freq_table_Band_filtered["Headliner"] == 0]['count'],
+    y=freq_table_Band_filtered.loc[freq_table_Band_filtered["Headliner"] == 0]['Band'],
+    orientation='h',
+    text=freq_table_Band_filtered.loc[freq_table_Band_filtered["Headliner"] == 0]['count'],
+    textposition='inside',
+    textangle=0,
+    textfont=dict(size=20),
+    name='Support',
+    marker=dict(color='orange'),
+))
+
+# Add total count
+for band in freq_table_Band_filtered['Band'].unique():
+    total = freq_table_Band_filtered.loc[freq_table_Band_filtered['Band'] == band, 'count_total'].values[0]
+    barchart.add_annotation(
+    x=total,
+    y=band,
+    text=f"{total}",
+    showarrow=False,
+    font=dict(size=16),
+    xanchor='left',
+    yanchor='middle'
 )
 
-# Show the chart in Streamlit
-st.altair_chart(chart, use_container_width=True)
+barchart.update_layout(barmode="stack")
+
+band_order = freq_table_Band_filtered.sort_values(["count_total"], ascending=False)['Band'].tolist()
+band_order= band_order[::-1]
+barchart.update_layout(
+    yaxis=dict(
+        categoryorder='array',
+        categoryarray=band_order
+    )
+)
+
+barchart.update_layout(
+    barmode="stack",
+    height=30 * len(band_order),  # 30px per bar, adjust as needed
+    yaxis=dict(
+        categoryorder='array',
+        categoryarray=band_order
+    )
+)
+st.plotly_chart(barchart, use_container_width=True)
