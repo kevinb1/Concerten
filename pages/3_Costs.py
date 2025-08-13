@@ -2,9 +2,6 @@ import pandas as pd
 import numpy as np
 import copy
 import streamlit as st
-import altair as alt
-import plotly.express as px
-import plotly.graph_objects as go
 from datetime import datetime
 import matplotlib.pyplot as plt
 
@@ -23,7 +20,9 @@ df_collectables = load_data("Collectables.xlsx", sheet_name=0)
 
 df_events = df_concerts.groupby('Date').agg(
     Date=('Date', 'first'),
-    Lineup=('Band', lambda x: join_bands(x, df_concerts.loc[x.index, 'Headliner'])),  # Join band names with headliner priority
+    # Join band names with headliner priority
+    Lineup=('Band', lambda x: join_bands(
+        x, df_concerts.loc[x.index, 'Headliner'])),
     Venue=('Venue', 'first'),           # Take the first venue
     City=('City', 'first'),             # Take the first city
     Price=('Price', 'first')              # Sum the prices
@@ -32,44 +31,44 @@ df_events = df_concerts.groupby('Date').agg(
 # st.write(df_events)
 
 
-
-####Sidebar###
+#### Sidebar###
 with st.sidebar:
     st.header("Filters")
-    
+
     # # Filter band
     band = st.multiselect("Band",
-                            options=df_events.Lineup.str.split(', ').explode().drop_duplicates().sort_values())
-    
+                          options=df_events.Lineup.str.split(', ').explode().drop_duplicates().sort_values())
+
     # Construct regex pattern to search for exact matches of each band followed by a comma
     pattern = '|'.join([f'\\b{a}\\b' for a in band])
 
-
     # Filter the DataFrame to find lineups containing any of the input bands followed by a comma
     i_lineup = df_events[df_events['Lineup'].str.contains(pattern)].index
-    
+
     # Filter Venue
     venue = st.multiselect("Venue",
-                            options=df_events.Venue.drop_duplicates().sort_values())
-    
+                           options=df_events.Venue.drop_duplicates().sort_values())
+
     # Filter City
     city = st.multiselect("City",
-                            options=df_events.City.drop_duplicates().sort_values())
-    
-    # Filter Date
-    start_date = st.date_input("Start Date", value=None, min_value=min(df_events.Date), max_value=max(df_events.Date))
-    end_date = st.date_input("End Date", value=None, min_value=min(df_events.Date), max_value=max(df_events.Date))
-     
+                          options=df_events.City.drop_duplicates().sort_values())
 
-####Title###
+    # Filter Date
+    start_date = st.date_input("Start Date", value=None, min_value=min(
+        df_events.Date), max_value=max(df_events.Date))
+    end_date = st.date_input("End Date", value=None, min_value=min(
+        df_events.Date), max_value=max(df_events.Date))
+
+
+#### Title###
 st.title("Costs Statistics")
 
 
-###Filter###
-#Create filter lists
+### Filter###
+# Create filter lists
 query_parts = []
 
-#Apply filters
+# Apply filters
 if band:
     query_parts.append("index in @i_lineup")
 if venue:

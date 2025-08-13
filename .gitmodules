@@ -1,0 +1,3 @@
+[submodule "MyFunctions"]
+	path = MyFunctions
+	url = https://github.com/kevinb1/MyFunctions.git
