@@ -1,0 +1,261 @@
+import pandas as pd
+import numpy as np
+import copy
+import streamlit as st
+import datetime as dt
+import time
+from streamlit_gsheets import GSheetsConnection
+import random as rd
+
+from functions import return_table, querried_df, new_id, del_from_GSheet, update_connection, add_to_GSheet, \
+return_id_from_dim
+
+##################################################################
+#Page configuration 
+##################################################################
+st.set_page_config(
+    page_title="Data Editor",
+    layout="wide",
+    initial_sidebar_state="expanded")
+
+##################################################################
+#### Session state ####
+##################################################################
+# Update data
+conn = update_connection()
+
+if "sheet_names" not in st.session_state:
+    sheet_names = [
+        "dimBand",
+        "dimVenue",
+        "dimDate",
+        "factConcert",
+        "factCollectable"
+        ]
+    st.session_state["sheet_names"] = sheet_names
+
+##################################################################
+# Side bar
+##################################################################
+with st.sidebar:
+    st.header("Navigation")
+    st.write("""
+    Use the menu at the top left to navigate through the different pages of the Concerts Dashboard app.
+    """)
+    st.markdown("---")
+    
+    # Select table to show
+    rad_df = st.radio(
+        "Select table to show:",
+        options=st.session_state["sheet_names"]
+        )
+    
+    st.markdown("---")
+    btn_refresh = st.button("Refresh Data",type="primary")
+    st.link_button("Go to Google Sheets", url="https://docs.google.com/spreadsheets/d/1AHoEOXrxXaQhDkOjGsTo_85f2fJIgUDglvaBwBevMFE/edit?gid=0#gid=0")
+
+    if btn_refresh:
+        st.cache_data.clear()
+        st.rerun()
+##################################################################
+# display data preview
+##################################################################
+conn = update_connection()
+st.title(f"Selected table preview: {rad_df}")
+df_bands = return_table(conn, "dimBand")
+df_venues = return_table(conn, "dimVenue")
+df_dates = return_table(conn, "dimDate")
+df_concerts = return_table(conn, "factConcert")
+df_collectables = return_table(conn, "factCollectable")
+
+if rad_df == "dimBand":
+    st.data_editor(df_bands, width="stretch")
+elif rad_df == "dimVenue":
+    st.data_editor(df_venues, width="stretch")
+elif rad_df == "dimDate":
+    st.data_editor(df_dates, width="stretch")
+elif rad_df == "factConcert":
+    st.data_editor(df_concerts, width="stretch")
+elif rad_df == "factCollectable":
+    st.data_editor(df_collectables, width="stretch")
+else:
+    st.write("Select a table to display.")
+
+##################################################################
+# data editor
+##################################################################
+st.title("Data Editor")
+col1, col2 = st.columns(2)
+rad_edit_type = col1.radio(
+    "Select edit type:",
+    options=[
+        "Add Data",
+        "Delete Data"
+        ],
+    horizontal=True
+    )
+
+rad_select_table = col2.radio(
+    "Select facts table:",
+    options=[
+        "factConcert",
+        "factCollectable"
+        ],
+    horizontal=True
+    )
+
+# Add DataEditor functionality
+if rad_select_table == "factConcert":
+    # Concerts selected
+    if rad_edit_type == "Add Data":
+        # Add data
+
+        # Create input fields
+        cols = st.columns(5)
+        date_to_add = cols[0].date_input(
+            "Select Date:",
+            min_value=df_dates.Date.min(),
+            max_value=dt.date.today(),
+            value=dt.date.today()
+            )
+        
+        band_to_add= cols[1].multiselect(
+            "Select Bands to add concert for:",
+            options=df_bands.Name.unique(),
+            accept_new_options=True,
+            )  
+        
+        venue_to_add= cols[2].selectbox(
+            "Select Venue to add concert for:",
+            options=df_venues.Venue.unique(),
+            accept_new_options=True,
+            index=None,
+            ) 
+        
+        headliner_to_add= cols[3].selectbox(
+            "Select Headliner to add concert for:",
+            options=band_to_add,
+            accept_new_options=False,
+            )
+        
+        price_to_add= cols[4].number_input(
+            "Select Price to add concert for:",
+            min_value=0.0,
+            value=50.00,
+            step=0.01,
+            format="%.2f"
+            )
+        # Add button
+        btn_add = st.button("Add concert to database", type="primary")
+
+        # Input for city outside the button click block
+        if venue_to_add not in df_venues.Venue.values and venue_to_add:
+            city_to_add = st.text_input(f"Enter city for new venue '{venue_to_add}':")
+        else:
+            city_to_add = None
+
+        if btn_add:
+            refresh = 0
+            
+            # Add new bands
+            for band in band_to_add:
+                if band not in df_bands.Name.values:
+                    refresh += 1
+                    new_band_id = new_id(df_bands.BandID)
+                    new_band_row = pd.DataFrame({
+                        "BandID": [new_band_id],
+                        "Name": [band]
+                    })
+                    updated_data = pd.concat([df_bands, new_band_row], ignore_index=True)
+                    conn.update(data=updated_data, worksheet="dimBand")
+            
+            # Add new venue (only if city is entered)
+            if venue_to_add not in df_venues.Venue.values and city_to_add:
+                refresh += 1
+                new_venue_id = new_id(df_venues.VenueID)
+                new_venue_row = pd.DataFrame({
+                    "VenueID": [new_venue_id],
+                    "Venue": [venue_to_add],
+                    "City": [city_to_add]
+                })
+                updated_data = pd.concat([df_venues, new_venue_row], ignore_index=True)
+                conn.update(data=updated_data, worksheet="dimVenue")
+            
+            # Show warning only if something was added
+            if refresh > 0:
+                st.warning("New dimension data added. Please refresh the data connection.")
+                st.cache_data.clear()
+                st.rerun()
+            
+            row_to_add = pd.DataFrame({
+                "Date": [date_to_add],  # wrap scalar in list
+                "Price": [price_to_add],
+                "Headliner": [return_id_from_dim(update_connection(), "dimBand", "Name", headliner_to_add)][0],
+                "BandID": [return_id_from_dim(update_connection(), "dimBand", "Name", band_to_add)],
+                "VenueID": [return_id_from_dim(update_connection(), "dimVenue", "Venue", venue_to_add)]
+            })
+
+            # new_rows = add_to_GSheet(
+            #     update_connection(), 
+            #     "factConcert", 
+            #     row_to_add, 
+            #     st.session_state["sheet_names"])
+
+            st.write(row_to_add)
+            
+            msg = st.success("Concert added successfully.")
+
+
+
+        
+        # st.write([date_to_add, band_to_add, venue_to_add, headliner_to_add, price_to_add])
+    else:
+        # Delete data
+        # Add dropdowns for Band, and date
+        col1, col2 = st.columns(2)
+        
+        df_concerts_temp = pd.merge(left=df_concerts.copy(), right=df_bands.copy(), 
+                            right_on="BandID", left_on="BandID", 
+                            how="inner")
+        
+        band_to_delete = col1.selectbox(
+            "Select Band to delete concert for:",
+            options=df_concerts_temp.Name.unique(),
+            accept_new_options=False,
+            index=None,
+            )        
+        
+        df_concerts_temp = querried_df(df_concerts_temp,
+                                       Name=band_to_delete)
+
+        date_to_delete = col2.selectbox(
+                "Select date (Y-mm-dd) to delete concert for:",
+                options=df_concerts_temp.Date.unique(),
+                index=None,
+                accept_new_options=False,
+                )
+
+        df_concerts_temp = querried_df(df_concerts_temp,
+                                Date=date_to_delete)
+
+        st.dataframe(df_concerts_temp)
+        
+        # Delete button
+        btn_delete = st.button("Delete selected concert", type="primary")
+        if btn_delete:
+            del_from_GSheet(update_connection(), "factConcert", df_concerts_temp)
+            msg = st.success("Concert deleted successfully.")
+            st.rerun()
+            
+
+    # Collectables selected
+else:
+    if rad_edit_type == "Add Data":
+        st.write("Add Data selected.")
+        # Add data
+    else:
+        st.write("Delete Data selected.")
+        # Delete data
+
+
+
