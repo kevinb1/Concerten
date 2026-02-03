@@ -5,6 +5,14 @@ import streamlit as st
 import datetime as dt
 import time
 from streamlit_gsheets import GSheetsConnection
+import streamlit_authenticator as stauth
+from streamlit_authenticator.utilities import (CredentialsError,
+                                               ForgotError,
+                                               Hasher,
+                                               LoginError,
+                                               RegisterError,
+                                               ResetError,
+                                               UpdateError)
 import random as rd
 
 
@@ -15,6 +23,7 @@ st.set_page_config(
     page_title="Concerts Dashboard",
     layout="wide",
     initial_sidebar_state="expanded")
+
 
 ##################################################################
 #### Session state ####
@@ -39,12 +48,14 @@ if "sheet_names" not in st.session_state:
 
 # add emoji's to session state
 music_emojis = [
-    "🎵","🎶","♩","♪","♫","♬","♭","♯","♮","🎼","🎤","🎧","🔊""🎸","🎻","🪕","🪘","🥁","🎹","🎺",
+    "🎵","🎶","🎼","🎤","🎧","🔊","🎸","🎻","🪕","🪘","🥁","🎹","🎺",
     "🎷","🪗","🎙️","📻","🎚️","🎛️","💿","📀"
 ]
 st.session_state["music_emojis"] = music_emojis
 
 
+    
+    
 ##################################################################
 # Side bar
 ##################################################################
@@ -58,11 +69,28 @@ with st.sidebar:
 # Title page
 ##################################################################
 
-st.title(f"{rd.choice(music_emojis)} Concerts Dashboard")
+st.title(f"{rd.choice(music_emojis)} Concerts Dashboard {rd.choice(music_emojis)}")
 
-st.write("Vullen met dashboard dingen uit andere pages")
+# Login
+authenticator = stauth.Authenticate(
+        st.secrets['credentials'].to_dict(),
+        st.secrets['cookie']['name'],
+        st.secrets['cookie']['key'],
+        st.secrets['cookie']['expiry_days'],
+    )
 
+# st.session_state.pop("authentication_status", None)
+authenticator.login(location="main", key="Login")
 
+# Check session_state for authentication
+if st.session_state.get("authentication_status"):
+    st.success(f"Welcome {st.session_state['name']}")
+    authenticator.logout("Logout", "sidebar")
+    
+elif st.session_state.get("authentication_status") is False:
+    st.error("Invalid username or password")
+else:
+    st.stop()
 
 
 
