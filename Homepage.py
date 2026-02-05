@@ -69,7 +69,10 @@ with st.sidebar:
 # Title page
 ##################################################################
 
+
 st.title(f"{rd.choice(music_emojis)} Concerts Dashboard {rd.choice(music_emojis)}")
+st.success("Log in to access the DataEditor page. If not, you can still view the statistics on the other pages.")
+
 
 # Login
 authenticator = stauth.Authenticate(
