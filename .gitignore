@@ -5,6 +5,7 @@
 /Concerts.xlsx
 /create_database.ipynb
 /test.py
+/.ipynb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -222,3 +223,4 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+generate_key.ipynb
