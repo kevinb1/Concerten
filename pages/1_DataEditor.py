@@ -16,7 +16,7 @@ from streamlit_authenticator.utilities import (CredentialsError,
 import random as rd
 
 from functions import return_table, querried_df, new_id, del_from_GSheet, update_connection, add_to_GSheet, \
-return_id_from_dim
+return_id_from_dim, get_location
 
 ##################################################################
 #Page configuration 
@@ -58,19 +58,12 @@ if not st.session_state.get("authentication_status"):
 # Side bar
 ##################################################################
 with st.sidebar:
-    st.header("Navigation")
-    st.write("""
-    Use the menu at the top left to navigate through the different pages of the Concerts Dashboard app.
-    """)
-    st.markdown("---")
-    
     # Select table to show
     rad_df = st.radio(
         "Select table to show:",
         options=st.session_state["sheet_names"]
         )
     
-    st.markdown("---")
     btn_refresh = st.button("Refresh Data",type="primary")
     st.link_button("Go to Google Sheets", url="https://docs.google.com/spreadsheets/d/1AHoEOXrxXaQhDkOjGsTo_85f2fJIgUDglvaBwBevMFE/edit?gid=0#gid=0")
 
@@ -175,7 +168,6 @@ if rad_select_table == "factConcert":
         if venue_to_add not in df_venues.Venue.values and venue_to_add:
             st.session_state['new_venue_prompt'] = True
             city_to_add = st.text_input(f"Enter city for new venue '{venue_to_add}':")
-            st.write(city_to_add)
             
             if len(city_to_add) >0:
                 st.session_state['new_venue_prompt'] = False
@@ -207,10 +199,21 @@ if rad_select_table == "factConcert":
             if venue_to_add not in df_venues.Venue.values and city_to_add:
                 refresh += 1
                 new_venue_id = new_id(df_venues.VenueID)
+                location_str = venue_to_add + ", " + city_to_add
+                
+                try:  
+                    lon, lat = get_location(location_str)
+                    lon = str(lon).replace(".", ",")
+                    lat = str(lat).replace(".", ",")
+                except TypeError:
+                    lon, lat = None, None
+                    
                 new_venue_row = pd.DataFrame({
                     "VenueID": [new_venue_id],
                     "Venue": [venue_to_add],
-                    "City": [city_to_add]
+                    "City": [city_to_add],
+                    "Longitude": [lon],
+                    "Latitude": [lat]
                 })
                 updated_data = pd.concat([df_venues, new_venue_row], ignore_index=True)
                 conn.update(data=updated_data, worksheet="dimVenue")
@@ -234,8 +237,6 @@ if rad_select_table == "factConcert":
                 "factConcert", 
                 row_to_add
                 )
-
-            # st.write(new_rows)
             
             msg = st.success("Concert added successfully. Rereshing data...")
             time.sleep(2)

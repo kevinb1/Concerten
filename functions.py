@@ -4,7 +4,7 @@ from io import BytesIO
 import streamlit as st
 import datetime as dt
 from streamlit_gsheets import GSheetsConnection
-
+from geopy.geocoders import Nominatim
 
 def update_connection():
     return st.connection("gsheets", type=GSheetsConnection)
@@ -45,7 +45,7 @@ def del_from_GSheet(conn, table_name, rows):
     
     conn.update(data=new_df, worksheet=table_name)
 
-def add_to_GSheet(conn, table_name, new_row, to_check):
+def add_to_GSheet(conn, table_name, new_row):
     old_df = return_table(conn, table_name)
     
     # explode the band column
@@ -54,6 +54,16 @@ def add_to_GSheet(conn, table_name, new_row, to_check):
     # Price and headliner are only applied to headliner
     new_rows.Price = new_rows.apply(lambda x: x.Price if x.Headliner == x.BandID else 0, axis=1)
     new_rows.Headliner = new_rows.apply(lambda x: 1 if x.Headliner == x.BandID else 0, axis=1)
+    
+    # Add ID to new_rows
+    concert_ids = []
+    for i in range(len(new_rows)):
+        new_id_value = new_id(old_df.ConcertID.tolist() + concert_ids)
+        concert_ids.append(new_id_value)
+    
+    new_rows["ConcertID"] = concert_ids
+    
+    conn.update(data=pd.concat([old_df, new_rows], ignore_index=True), worksheet=table_name)
     
     return new_rows
 
@@ -125,3 +135,20 @@ def new_id(ids):
         initial_id += 1
 
     return initial_id
+
+def get_location(location_string):
+    """
+    Get location information from a sting
+
+    Args:
+        location_string (str): String with information of location
+
+    Returns:
+        Location: Location object or None if not found
+    """
+    geolocator = Nominatim(user_agent="concerts_app")
+    location = geolocator.geocode(location_string)
+    if location:
+        return location.longitude, location.latitude
+    else:
+        return None
