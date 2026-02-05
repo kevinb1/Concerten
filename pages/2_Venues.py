@@ -96,6 +96,8 @@ with st.sidebar:
 # Title
 st.title(f"{rd.choice(st.session_state['music_emojis'])} Venue Statistics {rd.choice(st.session_state['music_emojis'])}")
 
+
+##################################################################
 # KPI's for venues
 top_row = st.columns(6)
 SELECTEDYEAR = df_concerts_filtered.Date.dt.year.max()
@@ -129,7 +131,10 @@ top_row[1].metric(
     chart_type="bar",
     width="content"
 )
-# Map visuals
+
+
+##################################################################
+# Main visuals
 map_visuals = st.columns(2)
 
 # Visited venues on map
@@ -139,9 +144,6 @@ concerts_grouped = concerts_grouped.groupby("VenueID").agg(count=("ConcertID", "
 concerts_grouped = concerts_grouped.merge(df_venues_filtered, left_on='VenueID', right_on='VenueID', how='left')
 concerts_grouped["marker_size"] = concerts_grouped["count"] * 200
 concerts_grouped.sort_values(by="Venue", ascending=True, inplace=True)
-
-# st.write(concerts_grouped)
-
 
 # Create Plotly map object
 fix_venues = px.scatter_map(
@@ -185,4 +187,19 @@ fix_venues.update_traces(
 
 # Show visual
 map_visuals[0].plotly_chart(fix_venues, theme="streamlit")
+
+# Venue statistics bar chart
+map_visuals[1].header(f"Venues by concerts attended")
+
+fix_venues_bar = px.bar(
+    concerts_grouped.sort_values(by="count", ascending=False),
+    x="Venue",
+    y="count",
+    labels={"count": "Number of concerts attended", "Venue": "Venues"},
+    color_discrete_sequence=px.colors.qualitative.Set2
+)
+
+map_visuals[1].plotly_chart(fix_venues_bar, theme="streamlit")
+
+
 
