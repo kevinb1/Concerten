@@ -5,3 +5,4 @@ numpy
 st-gsheets-connection
 streamlit-authenticator
 geopy
+plotly
