@@ -99,38 +99,78 @@ st.title(f"{rd.choice(st.session_state['music_emojis'])} Venue Statistics {rd.ch
 
 ##################################################################
 # KPI's for venues
-top_row = st.columns(6)
+top_row = st.columns(4)
 SELECTEDYEAR = dt.date.today().year
 first_time_visits = df_concerts.drop_duplicates(subset=['VenueID'], keep='first') 
 first_time_visits_since_year = len(first_time_visits[first_time_visits['Date'].dt.year >= SELECTEDYEAR])
 
+# Number of venues visited
 venues_ts = copy.deepcopy(df_concerts)
 venues_ts = venues_ts.drop_duplicates(subset=['VenueID'], keep='first').reset_index()
 venues_ts = venues_ts.groupby(venues_ts['Date'].dt.year).count()['VenueID'].cumsum()
 
-top_row[0].metric(
+top_row[1].metric(
     label="Number of Venues Visited", 
     value=df_concerts_filtered.VenueID.nunique(),
-    delta=f"+{first_time_visits_since_year} in {SELECTEDYEAR}",
+    delta=f"+{first_time_visits_since_year} new in {SELECTEDYEAR}",
     border=True,
     chart_data= venues_ts,
-    chart_type="bar",
+    chart_type="line",
     width="content"
     )
 
+# Number of concerts attended
 concerts_ts = copy.deepcopy(df_concerts)[["Date", "Price"]]
 concerts_ts = concerts_ts.groupby(concerts_ts['Date'].dt.year).nunique()['Date']
 concerts_since_year = concerts_ts[concerts_ts.index >= SELECTEDYEAR].sum()
 
-top_row[1].metric(
+top_row[0].metric(
     label="Total Concerts Attended",
     value=df_concerts_filtered.Date.nunique(),
     delta=f"+{concerts_since_year} in {SELECTEDYEAR}",
     border=True,
     chart_data=concerts_ts,
-    chart_type="bar",
+    chart_type="line",
     width="content"
 )
+
+# Most expensive venue
+venueprice_ts = copy.deepcopy(df_concerts)[["VenueID", "Date", "Price"]]
+venueprice_ts = venueprice_ts.drop_duplicates(subset=["VenueID", "Date"]).reset_index(drop=True)
+
+avg_venueprices = venueprice_ts.groupby(venueprice_ts['VenueID']).mean()['Price']
+avg_venueprice = venueprice_ts.Price.mean()
+most_expensive_on_avg = avg_venueprices[avg_venueprices == avg_venueprices.max()].index[0] 
+most_expensive_venue = df_venues[df_venues.VenueID == most_expensive_on_avg].Venue.values[0]
+
+avg_price_per_year = venueprice_ts.groupby(venueprice_ts['Date'].dt.year).mean()['Price']
+overall_avg_price = venueprice_ts["Price"].mean()
+avg_price_per_year_rounded = avg_price_per_year.round(2)
+
+avg_price_diff_lastyear = overall_avg_price - avg_price_per_year[avg_price_per_year.index == SELECTEDYEAR-1].values[0]
+
+top_row[2].metric(
+    label="Average Price per Venue",
+    value=f"€{overall_avg_price:.2f}",
+    delta=f"{'+' if avg_price_diff_lastyear > 0 else '-'}€{abs(avg_price_diff_lastyear):.2f} since {SELECTEDYEAR}",
+    border=True,
+    chart_data=avg_price_per_year_rounded,
+    chart_type="line",
+    width="content",
+    delta_color="inverse",
+)
+
+
+top_row[3].metric(
+    label="Most Expensive Venue (Avg. Price)",
+    value=most_expensive_venue,
+    delta=f"+€{avg_venueprices.loc[most_expensive_on_avg] - avg_venueprice:.2f} from Average",
+    border=True,
+    width="content",
+    help=most_expensive_venue,
+    delta_color="inverse",
+)
+
 
 
 ##################################################################
