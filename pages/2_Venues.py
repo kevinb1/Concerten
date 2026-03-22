@@ -54,21 +54,21 @@ with st.sidebar:
     
     # Reset filters button
     default_dates = (df_dates.Date.min(), df_dates.Date.max())
-    reset_filters = st.button("Reset filters", use_container_width=True, type="primary")
+    reset_filters = st.button("Reset Filters", use_container_width=True, type="primary")
     if reset_filters:
         st.rerun()
     
     # Date filters
-    start_date_filter = st.date_input("Select start date:",
+    start_date_filter = st.date_input("Select Start Date:",
                                       value=min(default_dates),
                                       min_value=df_dates.Date.min(),
-                                      max_value=df_dates.Date.max()
+                                      max_value=dt.date.today()
                                       )
 
-    end_date_filter = st.date_input("Select end date:",
+    end_date_filter = st.date_input("Select End Date:",
                                     value=max(default_dates),
                                     min_value=df_dates.Date.min(),
-                                    max_value=df_dates.Date.max()
+                                    max_value=dt.date.today()
                                     )
     
     
@@ -78,7 +78,7 @@ with st.sidebar:
     
     
     # Venue filter
-    venue_filter = st.multiselect("Select venues:",
+    venue_filter = st.multiselect("Select Venues:",
                                     options=df_venues.sort_values(by="Venue").Venue.unique(),
                                     default=None
                                     )
@@ -100,7 +100,7 @@ st.title(f"{rd.choice(st.session_state['music_emojis'])} Venue Statistics {rd.ch
 ##################################################################
 # KPI's for venues
 top_row = st.columns(6)
-SELECTEDYEAR = df_concerts_filtered.Date.dt.year.max()
+SELECTEDYEAR = dt.date.today().year
 first_time_visits = df_concerts.drop_duplicates(subset=['VenueID'], keep='first') 
 first_time_visits_since_year = len(first_time_visits[first_time_visits['Date'].dt.year >= SELECTEDYEAR])
 
@@ -109,7 +109,7 @@ venues_ts = venues_ts.drop_duplicates(subset=['VenueID'], keep='first').reset_in
 venues_ts = venues_ts.groupby(venues_ts['Date'].dt.year).count()['VenueID'].cumsum()
 
 top_row[0].metric(
-    label="Number of venues visited", 
+    label="Number of Venues Visited", 
     value=df_concerts_filtered.VenueID.nunique(),
     delta=f"+{first_time_visits_since_year} in {SELECTEDYEAR}",
     border=True,
@@ -123,9 +123,9 @@ concerts_ts = concerts_ts.groupby(concerts_ts['Date'].dt.year).nunique()['Date']
 concerts_since_year = concerts_ts[concerts_ts.index >= SELECTEDYEAR].sum()
 
 top_row[1].metric(
-    label="Total concerts attended",
+    label="Total Concerts Attended",
     value=df_concerts_filtered.Date.nunique(),
-    delta=f"+{first_time_visits_since_year} in {SELECTEDYEAR}",
+    delta=f"+{concerts_since_year} in {SELECTEDYEAR}",
     border=True,
     chart_data=concerts_ts,
     chart_type="bar",
@@ -138,7 +138,7 @@ top_row[1].metric(
 map_visuals = st.columns(2)
 
 # Visited venues on map
-map_visuals[0].header("Venues visited")
+map_visuals[0].header("Venues Visited")
 concerts_grouped = df_concerts_filtered.drop_duplicates(subset=["Date"], keep="first")
 concerts_grouped = concerts_grouped.groupby("VenueID").agg(count=("ConcertID", "count")).reset_index()
 concerts_grouped = concerts_grouped.merge(df_venues_filtered, left_on='VenueID', right_on='VenueID', how='left')
@@ -189,7 +189,7 @@ fix_venues.update_traces(
 map_visuals[0].plotly_chart(fix_venues, theme="streamlit")
 
 # Venue statistics bar chart
-map_visuals[1].header(f"Venues by concerts attended")
+map_visuals[1].header(f"Venues by Concerts Attended")
 
 fix_venues_bar = px.bar(
     concerts_grouped.sort_values(by="count", ascending=False),

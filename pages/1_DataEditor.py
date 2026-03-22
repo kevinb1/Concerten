@@ -60,7 +60,7 @@ if not st.session_state.get("authentication_status"):
 with st.sidebar:
     # Select table to show
     rad_df = st.radio(
-        "Select table to show:",
+        "Select Table to Show:",
         options=st.session_state["sheet_names"]
         )
     
@@ -77,7 +77,7 @@ with st.sidebar:
 ##################################################################
 
 conn = update_connection()
-st.title(f"Selected table preview: {rad_df}")
+st.title(f"Selected Table Preview: {rad_df}")
 df_bands = return_table(conn, "dimBand")
 df_venues = return_table(conn, "dimVenue")
 df_dates = return_table(conn, "dimDate")
@@ -104,7 +104,7 @@ else:
 st.title("Data Editor")
 col1, col2 = st.columns(2)
 rad_edit_type = col1.radio(
-    "Select edit type:",
+    "Select Edit Type:",
     options=[
         "Add Data",
         "Delete Data"
@@ -137,26 +137,26 @@ if rad_select_table == "factConcert":
             )
         
         band_to_add= cols[1].multiselect(
-            "Select Bands to add concert for:",
+            "Select Bands to Add Concert for:",
             options=df_bands.Name.unique(),
             accept_new_options=True,
             )  
         
         venue_to_add= cols[2].selectbox(
-            "Select Venue to add concert for:",
+            "Select Venue to Add Concert for:",
             options=df_venues.Venue.unique(),
             accept_new_options=True,
             index=None,
             ) 
         
         headliner_to_add= cols[3].selectbox(
-            "Select Headliner to add concert for:",
+            "Select Headliner to Add Concert for:",
             options=band_to_add,
             accept_new_options=False,
             )
         
         price_to_add= cols[4].number_input(
-            "Select Price to add concert for:",
+            "Select Price to add Concert for:",
             min_value=0.0,
             value=50.00,
             step=0.01,
@@ -167,7 +167,7 @@ if rad_select_table == "factConcert":
         # Input for city outside the button click block
         if venue_to_add not in df_venues.Venue.values and venue_to_add:
             st.session_state['new_venue_prompt'] = True
-            city_to_add = st.text_input(f"Enter city for new venue '{venue_to_add}':")
+            city_to_add = st.text_input(f"Enter City for New Venue '{venue_to_add}':")
             
             if len(city_to_add) >0:
                 st.session_state['new_venue_prompt'] = False
@@ -176,7 +176,7 @@ if rad_select_table == "factConcert":
             city_to_add = None
             
         # Add button
-        btn_add = st.button("Add concert to database", 
+        btn_add = st.button("Add Concert to Database", 
                             type="primary", 
                             disabled=st.session_state["new_venue_prompt"])
 
@@ -253,7 +253,7 @@ if rad_select_table == "factConcert":
                             how="inner")
         
         band_to_delete = col1.selectbox(
-            "Select Band to delete concert for:",
+            "Select Band to Delete Concert for:",
             options=df_concerts_temp.Name.unique(),
             accept_new_options=False,
             index=None,
@@ -263,7 +263,7 @@ if rad_select_table == "factConcert":
                                        Name=band_to_delete)
 
         date_to_delete = col2.selectbox(
-                "Select date (Y-mm-dd) to delete concert for:",
+                "Select Date (Y-mm-dd) to Delete Concert for:",
                 options=df_concerts_temp.Date.unique(),
                 index=None,
                 accept_new_options=False,
@@ -275,7 +275,7 @@ if rad_select_table == "factConcert":
         st.dataframe(df_concerts_temp)
         
         # Delete button
-        btn_delete = st.button("Delete selected concert", type="primary")
+        btn_delete = st.button("Delete Selected Concert", type="primary")
         if btn_delete:
             # Delete selected concert from GSheet
             del_from_GSheet(update_connection(), "factCollectable", df_concerts_temp)
@@ -318,13 +318,13 @@ else:
             )  
         
         venue_to_add= cols[4].selectbox(
-            "Select venue:",
+            "Select Venue:",
             options=df_venues.Venue.unique(),
             accept_new_options=False,
             )  
         
          # Add button
-        btn_add = st.button("Add collectable to database", 
+        btn_add = st.button("Add Collectable to Database", 
                             type="primary")
 
         # Button pressed
@@ -364,7 +364,7 @@ else:
         
         
         collectable_to_delete = cols[0].selectbox(
-            "Select Collectable to delete:",
+            "Select Collectable to Delete:",
             options=df_collectables_temp.Collectable.unique(),
             accept_new_options=False,
             index=None,
@@ -407,7 +407,7 @@ else:
         st.dataframe(df_collectables_temp)
         
         # Delete button
-        btn_delete = st.button("Delete selected Collectable", type="primary")
+        btn_delete = st.button("Delete Selected Collectable", type="primary")
         if btn_delete:
             # Delete selected concert from GSheet
             del_from_GSheet(update_connection(), "factCollectable", df_collectables_temp)
